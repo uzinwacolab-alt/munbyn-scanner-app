@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pallet Verification Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="app-title">Pallet Verifier</h1>
+            <div id="status-indicator" class="status-indicator"></div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="content-area" id="main-content">
+
+            <!-- View: Setup Hub -->
+            <section id="view-setup" class="view active">
+                <div class="card scan-card">
+                    <h2 class="mb-2">Scanner Actions</h2>
+
+                    <button class="btn btn-primary btn-block mb-2 action-hub-btn" data-target="view-pre-batching">
+                        Pre-Batching
+                    </button>
+
+                    <button class="btn btn-secondary btn-block mb-2 action-hub-btn pin-protected"
+                        data-target="view-edit-bom">
+                        Edit BOM
+                    </button>
+
+                    <button class="btn btn-secondary btn-block action-hub-btn pin-protected"
+                        data-target="view-materials-admin">
+                        Materials
+                    </button>
+                </div>
+            </section>
+
+            <!-- View: Pre-Batching (Session Setup) -->
+            <section id="view-pre-batching" class="view">
+                <div class="card" id="session-setup-card">
+                    <div class="view-header mb-2 border-bottom pb-1">
+                        <button class="btn-icon text-primary" onclick="switchView('view-setup')"
+                            style="font-size: 1.5rem;">←</button>
+                        <h2 style="flex-grow: 1; text-align: center; margin-right: 1.5rem;">Pre-Batching</h2>
+                    </div>
+
+                    <p class="text-secondary mb-2">Select a recipe and target pallet count.</p>
+
+                    <div class="form-group mb-2">
+                        <label for="session-recipe-select">Recipe</label>
+                        <select id="session-recipe-select" class="form-control">
+                            <option value="">-- Select Recipe --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-2">
+                        <label for="session-target-count">Target Pallets</label>
+                        <input type="number" id="session-target-count" class="form-control" min="1" value="1">
+                    </div>
+
+                    <button id="start-session-btn" class="btn btn-primary btn-block mt-2">Start Session</button>
+
+                    <div id="active-session-info" class="hidden mt-2 p-2 border-primary" style="margin-bottom: 3rem;">
+                        <h3 class="text-success">Active Session Running</h3>
+                        <p id="active-session-details" class="mb-2">Recipe: --- | Pallets: 0/0</p>
+
+                        <div id="manual-pallet-entry" class="sim-form mb-2">
+                            <input type="text" id="manual-pallet-input" class="form-control"
+                                placeholder="13-digit Pallet Barcode..." maxlength="13">
+                            <button id="manual-pallet-btn" class="btn btn-primary" style="white-space: nowrap;">Scan
+                                Pallet</button>
+                        </div>
+
+                        <div id="prebatch-current-pallet-info" class="mb-2 hidden card"
+                            style="background-color: var(--bg-color);">
+                            <h4 class="text-primary mb-1">Current Pallet: <span id="prebatch-pallet-id"
+                                    class="text-white">None</span></h4>
+                            <div id="prebatch-materials-list" class="db-list"
+                                style="max-height: 30vh; overflow-y: auto;">
+                                <!-- checklist injected here -->
+                            </div>
+                        </div>
+
+                        <button id="end-session-btn" class="btn btn-danger btn-block mt-2">End Session</button>
+                    </div>
+
+                    <!-- Moved Simulator Here -->
+                    <div class="card mt-2" style="background-color: #1f242c; margin-top: 2rem;">
+                        <h3 class="mb-2 text-secondary">Scanner Simulator</h3>
+                        <form id="sim-form" class="sim-form">
+                            <input type="text" id="sim-input" placeholder="Type barcode..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary">Simulate</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: Edit BOM (Recipes) -->
+            <section id="view-edit-bom" class="view">
+                <div class="card" style="height: 100%;">
+                    <div class="view-header mb-2 border-bottom pb-1">
+                        <button class="btn-icon text-primary" onclick="switchView('view-setup')"
+                            style="font-size: 1.5rem;">←</button>
+                        <h2 style="flex-grow: 1; text-align: center; margin-right: 1.5rem;">Edit BOM</h2>
+                    </div>
+
+                    <div id="recipes-list" class="db-list mb-2">
+                        <!-- Recipes injected here -->
+                    </div>
+
+                    <button id="show-add-recipe-btn" class="btn btn-secondary btn-block">Create New BOM</button>
+
+                    <!-- Add/Edit Recipe Form -->
+                    <div id="add-recipe-form" class="hidden mt-2 border-top pt-2" style="padding-bottom: 2rem;">
+                        <h3 id="recipe-form-title" class="mb-2">Create New BOM</h3>
+
+                        <div class="form-group mb-2">
+                            <label>BOM Name</label>
+                            <input type="text" id="new-recipe-name" class="form-control" placeholder="e.g. Austin">
+                        </div>
+
+                        <h4 class="mb-1">Materials List</h4>
+                        <div id="new-recipe-materials-list" class="mb-2"></div>
+
+                        <div class="sim-form mb-2">
+                            <select id="recipe-add-material-select" class="form-control">
+                                <!-- Materials injected here -->
+                            </select>
+                            <input type="number" id="recipe-add-qty" class="form-control" style="width: 80px;" min="1"
+                                value="1">
+                            <button id="recipe-add-mat-btn" class="btn btn-primary"
+                                style="font-size: 1.25rem; font-weight: bold; width: 3rem;">+</button>
+                        </div>
+
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="cancel-recipe-btn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                            <button id="save-recipe-btn" class="btn btn-success" style="flex: 2;">Save BOM</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: Materials Admin -->
+            <section id="view-materials-admin" class="view">
+                <div class="card" style="height: 100%;">
+                    <div class="view-header mb-2 border-bottom pb-1">
+                        <button class="btn-icon text-primary" onclick="switchView('view-setup')"
+                            style="font-size: 1.5rem;">←</button>
+                        <h2 style="flex-grow: 1; text-align: center; margin-right: 1.5rem;">Materials</h2>
+                    </div>
+
+                    <div id="materials-list-ui" class="db-list mb-2" style="max-height: 40vh; overflow-y: auto;">
+                        <!-- Materials injected here -->
+                    </div>
+
+                    <div id="material-form-container" class="border-top pt-2">
+                        <h4 id="material-form-title" class="mb-1">Add New Material</h4>
+                        <form id="add-material-form" class="sim-form mb-1">
+                            <input type="text" id="new-mat-code" placeholder="Code (101)" class="form-control"
+                                style="flex: 1; min-width: 60px;">
+                            <input type="text" id="new-mat-name" placeholder="Name" class="form-control"
+                                style="flex: 2;">
+                            <button type="submit" id="save-mat-btn" class="btn btn-secondary"
+                                style="height: 100%;">Add</button>
+                        </form>
+                        <button id="cancel-mat-edit-btn" class="btn btn-secondary btn-block hidden text-sm">Cancel
+                            Edit</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: Verify Materials -->
+            <section id="view-verify" class="view">
+                <div class="verify-header card mb-1" style="padding: 0.75rem 1rem;">
+                    <h2 id="active-session-title" class="text-primary m-0" style="font-size: 1.25rem;">Session: ---</h2>
+                    <h3 id="active-pallet-id" class="m-0 mt-1" style="font-size: 1.1rem; color: var(--text-primary);">
+                        Status: Scanning Materials...</h3>
+                    <div class="progress-bar-container" style="height: 6px; margin: 0.5rem 0 0.25rem 0;">
+                        <div id="progress-bar" class="progress-bar"></div>
+                    </div>
+                    <p id="progress-text" class="text-secondary m-0" style="font-size: 0.85rem;">0 / 0 Items Scanned</p>
+                </div>
+
+                <div id="materials-list" class="materials-list">
+                    <!-- Material items injected here via JS -->
+                </div>
+
+                <div class="action-bar mt-2">
+                    <!-- Manual Scanner Input for testing directly on Verify screen -->
+                    <div class="sim-form mb-2">
+                        <input type="text" id="manual-verify-input" class="form-control"
+                            placeholder="13-digit Barcode..." maxlength="13" autocomplete="off">
+                        <button id="manual-verify-btn" class="btn btn-primary"
+                            style="white-space: nowrap;">Scan</button>
+                    </div>
+
+                    <button id="cancel-pallet-btn" class="btn btn-danger btn-block">Clear Current Materials</button>
+                </div>
+            </section>
+
+            <!-- View: History / Logs -->
+            <section id="view-history" class="view">
+                <div class="card" style="height: 100%; display: flex; flex-direction: column; padding-bottom: 0;">
+                    <div class="view-header mb-1 border-bottom pb-1"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0;">History & Logs</h2>
+                        <button id="btn-clear-history" class="btn btn-danger"
+                            style="padding: 0.4rem 0.6rem; font-size: 0.85rem;">Reset DB</button>
+                    </div>
+                    <div id="history-list" class="db-list" style="flex: 1; overflow-y: auto;">
+                        <p class="text-secondary text-center">No history available.</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-btn active" data-target="view-setup">
+                <span class="nav-icon">📁</span>
+                <span>Actions</span>
+            </button>
+            <button class="nav-btn" data-target="view-verify">
+                <span class="nav-icon">🔍</span>
+                <span>Scan</span>
+            </button>
+            <button class="nav-btn" data-target="view-history">
+                <span class="nav-icon">📋</span>
+                <span>History</span>
+            </button>
+        </nav>
+
+        <!-- PIN Entry Overlay -->
+        <div id="overlay-pin" class="overlay-alert hidden" style="backdrop-filter: blur(8px);">
+            <div class="card text-center" style="width: 85%; max-width: 350px;">
+                <h2 class="mb-1">Admin Access</h2>
+                <p class="text-secondary mb-2">Enter PIN to configure app.</p>
+
+                <div class="pin-display mb-2">
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                </div>
+
+                <div class="numpad">
+                    <button class="numpad-btn" data-val="1">1</button>
+                    <button class="numpad-btn" data-val="2">2</button>
+                    <button class="numpad-btn" data-val="3">3</button>
+                    <button class="numpad-btn" data-val="4">4</button>
+                    <button class="numpad-btn" data-val="5">5</button>
+                    <button class="numpad-btn" data-val="6">6</button>
+                    <button class="numpad-btn" data-val="7">7</button>
+                    <button class="numpad-btn" data-val="8">8</button>
+                    <button class="numpad-btn" data-val="9">9</button>
+                    <button class="btn btn-secondary numpad-action" id="pin-cancel-btn">Cancel</button>
+                    <button class="numpad-btn" data-val="0">0</button>
+                    <button class="btn btn-warning numpad-action" id="pin-del-btn">⌫</button>
+                </div>
+
+                <p id="pin-error-msg" class="text-danger mt-2 hidden" style="font-size: 0.8rem; font-weight: 600;">
+                    Incorrect PIN</p>
+            </div>
+        </div>
+
+        <!-- Fullscreen Alerts -->
+        <div id="overlay-alert" class="overlay-alert hidden">
+            <div class="alert-content">
+                <div id="alert-icon" class="alert-icon">❌</div>
+                <h2 id="alert-title">Error</h2>
+                <p id="alert-message">Invalid Barcode Scanned</p>
+                <button id="alert-close-btn" class="btn btn-block mt-2">Dismiss</button>
+            </div>
+        </div>
+
+        <!-- Temporary Success Popup -->
+        <div id="temp-popup" class="overlay-alert hidden"
+            style="background: rgba(0,0,0,0.85); backdrop-filter: none; z-index: 10000; align-items: flex-start; padding-top: 20vh;">
+            <div class="card text-center border-success"
+                style="border-width: 2px; border-style: solid; padding: 2rem; width: 85%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <h2 class="text-success mb-1" style="font-size: 3rem;">✅</h2>
+                <h2 id="temp-popup-msg" class="text-white m-0">Pallet Saved</h2>
+            </div>
+        </div>
+
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
