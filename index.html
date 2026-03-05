@@ -42,6 +42,12 @@
                         data-target="view-materials-admin">
                         Materials
                     </button>
+
+                    <button class="btn btn-secondary btn-block pin-protected mt-2" id="import-csv-trigger-btn"
+                        style="border: 1px dashed var(--primary); background: transparent;">
+                        Import CSV DB
+                    </button>
+                    <input type="file" id="csv-file-input" accept=".csv" multiple class="hidden">
                 </div>
             </section>
 
@@ -295,6 +301,15 @@
         </div>
 
     </div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+    </script>
     <script src="app.js"></script>
 </body>
 

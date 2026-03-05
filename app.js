@@ -128,6 +128,12 @@ const alertMessage = document.getElementById('alert-message');
 const alertCloseBtn = document.getElementById('alert-close-btn');
 
 // ==========================================
+// CSV IMPORT
+// ==========================================
+const importCsvTriggerBtn = document.getElementById('import-csv-trigger-btn');
+const csvFileInput = document.getElementById('csv-file-input');
+
+// ==========================================
 // NAVIGATION LOGIC
 // ==========================================
 function switchView(viewId) {
@@ -172,6 +178,12 @@ hubBtns.forEach(btn => {
         }
     });
 });
+
+if (importCsvTriggerBtn) {
+    importCsvTriggerBtn.addEventListener('click', () => {
+        showPinOverlay('action-import-csv');
+    });
+}
 
 // Main Bottom Nav Navigation
 navBtns.forEach(btn => {
@@ -251,6 +263,8 @@ function validatePin() {
 
         if (pendingAdminTarget === 'action-clear-history') {
             clearHistoryDB();
+        } else if (pendingAdminTarget === 'action-import-csv') {
+            if (csvFileInput) csvFileInput.click();
         } else if (pendingAdminTarget) {
             switchView(pendingAdminTarget);
         }
@@ -1168,4 +1182,108 @@ function clearHistoryDB() {
             showAlert("Database Error", "Failed to clear history.", false);
         };
     }
+}
+
+// ==========================================
+// CSV IMPORT LOGIC (FileReader)
+// ==========================================
+if (csvFileInput) {
+    csvFileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        let processedCount = 0;
+
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const text = ev.target.result;
+                const fileName = file.name.toLowerCase();
+
+                if (fileName.includes('material')) {
+                    parseMaterialsCSV(text);
+                } else if (fileName.includes('recipe')) {
+                    parseRecipesCSV(text);
+                }
+
+                processedCount++;
+                if (processedCount === files.length) {
+                    setTimeout(() => {
+                        showAlert('Import Complete', `Successfully imported ${files.length} CSV file(s).`, true);
+                        if (typeof loadMaterialsList === 'function') loadMaterialsList();
+                        if (typeof loadRecipesList === 'function') loadRecipesList();
+                    }, 800);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        csvFileInput.value = ''; // Reset input
+    });
+}
+
+function parseMaterialsCSV(csvText) {
+    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) return; // Need at least header + 1 row
+
+    const tx = db.transaction('materials', 'readwrite');
+    const store = tx.objectStore('materials');
+
+    // Start at 1 to skip header "MaterialCode,MaterialName"
+    for (let i = 1; i < lines.length; i++) {
+        // Handles basic CSV parsing without complex quoting
+        const parts = lines[i].split(',').map(p => p.trim());
+        if (parts.length >= 2) {
+            const code = parts[0];
+            const name = parts[1];
+            if (code && name) {
+                // Excel strips leading zeros, so force it back to 3 digits (e.g. "1" -> "001")
+                const paddedCode = code.padStart(3, '0');
+                store.put({ materialCode: paddedCode, name: name });
+            }
+        }
+    }
+}
+
+function parseRecipesCSV(csvText) {
+    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length < 2) return;
+
+    // Build a map of items for each recipe
+    const recipeMap = {}; // { "Austin Core": { items: [] } }
+
+    // Start at 1 to skip header "RecipeName,MaterialCode,TargetQuantity"
+    for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',').map(p => p.trim());
+        if (parts.length >= 3) {
+            const recipeName = parts[0];
+            const matCode = parts[1];
+            const qty = parseInt(parts[2], 10);
+
+            if (recipeName && matCode && !isNaN(qty)) {
+                if (!recipeMap[recipeName]) {
+                    recipeMap[recipeName] = [];
+                }
+
+                // Excel strips leading zeros, so force it back to 3 digits
+                const paddedMatCode = matCode.padStart(3, '0');
+
+                recipeMap[recipeName].push({
+                    materialCode: paddedMatCode,
+                    targetQuantity: qty,
+                    name: "Imported Material" // Mocked until loaded
+                });
+            }
+        }
+    }
+
+    const tx = db.transaction('recipes', 'readwrite');
+    const store = tx.objectStore('recipes');
+
+    Object.keys(recipeMap).forEach(key => {
+        store.put({
+            recipeName: key,
+            items: recipeMap[key]
+        });
+    });
 }
